@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse register(RegisterRequest request) {
 
-        if(userRepository.existsByEmail(request.getEmail())){
+        if(userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
         User user = new User();
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
 
-        UserResponse response=new UserResponse();
+        UserResponse response = new UserResponse();
         response.setId(savedUser.getId());
         response.setFirstName(savedUser.getFirstName());
         response.setLastName(savedUser.getLastName());
