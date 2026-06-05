@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.config;
 
+import com.ehtesham.securebank.security.jwt.JwtAuthenticationFilter;
 import com.ehtesham.securebank.security.userdetails.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,15 +10,17 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 @Configuration
 public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
-
+    private final  JwtAuthenticationFilter jwtAuthenticationFilter;
     public SecurityConfig(
-            CustomUserDetailsService userDetailsService) {
+            CustomUserDetailsService userDetailsService,
+           JwtAuthenticationFilter jwtAuthenticationFilter1) {
 
         this.userDetailsService = userDetailsService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter1;
     }
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -33,6 +36,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
                 )
                 .httpBasic(Customizer.withDefaults());
 
