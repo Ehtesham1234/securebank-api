@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain)
             throws ServletException, IOException {
-
+        System.out.println("JWT Filter Hit: " + request.getRequestURI());
         String authHeader =
                 request.getHeader("Authorization");
 
@@ -58,13 +58,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userEmail);
 
             if (jwtService.isTokenValid(jwt, userDetails)) {
-
+                System.out.println(userDetails.getAuthorities());
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
                                 userDetails.getAuthorities());
-
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request));
