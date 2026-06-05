@@ -5,6 +5,7 @@ import com.ehtesham.securebank.common.exception.EmailAlreadyExistsException;
 import com.ehtesham.securebank.common.exception.InvalidCredentialsException;
 import com.ehtesham.securebank.security.dto.AuthResponse;
 import com.ehtesham.securebank.security.dto.LoginRequest;
+import com.ehtesham.securebank.security.jwt.JwtService;
 import com.ehtesham.securebank.user.dto.RegisterRequest;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
@@ -19,12 +20,15 @@ public class UserServiceImpl implements UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
     public UserServiceImpl(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService=jwtService;
     }
 
     @Override
@@ -72,8 +76,11 @@ public class UserServiceImpl implements UserService {
                     "Invalid email or password");
         }
 
-        return new AuthResponse(
-                "LOGIN_SUCCESS_TEMP_TOKEN");
+        String token =
+                jwtService.generateToken(
+                        user.getEmail());
+
+        return new AuthResponse(token);
     }
 
 }
