@@ -1,5 +1,7 @@
 package com.ehtesham.securebank.user.controller;
 
+import com.ehtesham.securebank.security.dto.AuthResponse;
+import com.ehtesham.securebank.security.dto.LoginRequest;
 import com.ehtesham.securebank.user.dto.RegisterRequest;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.service.UserService;
@@ -20,5 +22,11 @@ public class AuthController {
     @PostMapping("/register")
     public UserResponse register(@Valid @RequestBody RegisterRequest request){
         return userService.register(request);
+    }
+    @PostMapping("/login")
+    public AuthResponse login(
+            @Valid @RequestBody LoginRequest request) {
+
+        return userService.login(request);
     }
 }

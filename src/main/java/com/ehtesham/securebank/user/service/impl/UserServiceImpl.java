@@ -2,6 +2,9 @@ package com.ehtesham.securebank.user.service.impl;
 
 import com.ehtesham.securebank.common.enums.Role;
 import com.ehtesham.securebank.common.exception.EmailAlreadyExistsException;
+import com.ehtesham.securebank.common.exception.InvalidCredentialsException;
+import com.ehtesham.securebank.security.dto.AuthResponse;
+import com.ehtesham.securebank.security.dto.LoginRequest;
 import com.ehtesham.securebank.user.dto.RegisterRequest;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
@@ -51,4 +54,26 @@ public class UserServiceImpl implements UserService {
 
         return response;
     }
+
+    @Override
+    public AuthResponse login(LoginRequest request) {
+
+        User user = userRepository
+                .findByEmail(request.getEmail())
+                .orElseThrow(() ->
+                        new InvalidCredentialsException(
+                                "Invalid email or password"));
+
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword())) {
+
+            throw new InvalidCredentialsException(
+                    "Invalid email or password");
+        }
+
+        return new AuthResponse(
+                "LOGIN_SUCCESS_TEMP_TOKEN");
+    }
+
 }
