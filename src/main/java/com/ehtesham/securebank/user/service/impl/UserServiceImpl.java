@@ -1,6 +1,7 @@
 package com.ehtesham.securebank.user.service.impl;
 
 import com.ehtesham.securebank.common.enums.Role;
+import com.ehtesham.securebank.common.exception.EmailAlreadyExistsException;
 import com.ehtesham.securebank.user.dto.RegisterRequest;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
@@ -27,7 +28,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse register(RegisterRequest request) {
 
         if(userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new EmailAlreadyExistsException("Email already exists");
         }
         User user = new User();
 
