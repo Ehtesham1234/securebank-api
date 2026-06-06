@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.common.exception;
 
+import com.ehtesham.securebank.common.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,11 +15,10 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationException(
+    public ApiResponse<Map<String, String>> handleValidationException(
             MethodArgumentNotValidException ex) {
 
         Map<String, String> errors = new HashMap<>();
-
         ex.getBindingResult()
                 .getFieldErrors()
                 .forEach(error ->
@@ -27,27 +27,33 @@ public class GlobalExceptionHandler {
                                 error.getDefaultMessage()
                         ));
 
-        return errors;
+        return ApiResponse.error("Validation failed", errors);
     }
+
     @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public Map<String, String> handleEmailAlreadyExists(
+    public ApiResponse<Void> handleEmailAlreadyExists(
             EmailAlreadyExistsException ex) {
-
-        Map<String, String> error = new HashMap<>();
-        error.put("message", ex.getMessage());
-
-        return error;
+        return ApiResponse.error(ex.getMessage());
     }
 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(InvalidCredentialsException.class)
-    public Map<String, String> handleInvalidCredentials(
+    public ApiResponse<Void> handleInvalidCredentials(
             InvalidCredentialsException ex) {
+        return ApiResponse.error(ex.getMessage());
+    }
 
-        Map<String, String> error = new HashMap<>();
-        error.put("message", ex.getMessage());
-
-        return error;
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(TokenExpiredException.class)
+    public ApiResponse<Void> handleTokenExpired(
+            TokenExpiredException ex) {
+        return ApiResponse.error(ex.getMessage());
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidOtpException.class)
+    public ApiResponse<Void> handleInvalidOtp(
+            InvalidOtpException ex) {
+        return ApiResponse.error(ex.getMessage());
     }
 }

@@ -1,4 +1,4 @@
-package com.ehtesham.securebank.security.dto;
+package com.ehtesham.securebank.auth.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,5 +9,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AuthResponse {
 
-    private String token;
+    private String accessToken;
+    private String refreshToken;
 }
