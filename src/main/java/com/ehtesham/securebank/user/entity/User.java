@@ -1,12 +1,14 @@
 package com.ehtesham.securebank.user.entity;
 
 import com.ehtesham.securebank.common.enums.Role;
+import com.ehtesham.securebank.common.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,13 +33,28 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "phone_number", length = 15)
+    private String phoneNumber;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Column(length = 500)
+    private String address;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_status", nullable = false)
+    private UserStatus userStatus = UserStatus.PENDING_KYC;
+
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)// insertable = false, removed after adding @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
     @UpdateTimestamp
-    @Column(name = "updated_at", updatable = false) // insertable = false, removed after adding @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

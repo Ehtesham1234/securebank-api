@@ -1,6 +1,7 @@
 package com.ehtesham.securebank.user.dto;
 
 import com.ehtesham.securebank.common.enums.Role;
+import com.ehtesham.securebank.common.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,4 +18,5 @@ public class UserResponse {
     private String lastName;
     private String email;
     private Role role;
+    private UserStatus userStatus;
 }

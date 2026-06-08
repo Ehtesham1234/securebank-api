@@ -1,4 +1,4 @@
-package com.ehtesham.securebank.security.jwt;
+package com.ehtesham.securebank.security.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 
 import java.util.function.Function;
 @Service

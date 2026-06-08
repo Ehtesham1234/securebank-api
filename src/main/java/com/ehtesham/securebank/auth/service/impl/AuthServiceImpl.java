@@ -6,11 +6,12 @@ import com.ehtesham.securebank.auth.service.AuthService;
 import com.ehtesham.securebank.auth.service.OtpService;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
 import com.ehtesham.securebank.common.enums.Role;
+import com.ehtesham.securebank.common.enums.UserStatus;
 import com.ehtesham.securebank.common.exception.EmailAlreadyExistsException;
 import com.ehtesham.securebank.common.exception.InvalidCredentialsException;
 import com.ehtesham.securebank.common.exception.InvalidOtpException;
 import com.ehtesham.securebank.notification.EmailService;
-import com.ehtesham.securebank.security.jwt.JwtService;
+import com.ehtesham.securebank.security.service.JwtService;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
 import com.ehtesham.securebank.user.repository.UserRepository;
@@ -44,18 +45,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse register(RegisterRequest request) {
 
-        if(userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException("Email already exists");
         }
-        User user = new User();
 
+        User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
-
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPhoneNumber(request.getPhoneNumber());
         user.setRole(Role.CUSTOMER);
-
+        user.setUserStatus(UserStatus.PENDING_KYC);
 
         User savedUser = userRepository.save(user);
 
@@ -65,12 +66,14 @@ public class AuthServiceImpl implements AuthService {
         response.setLastName(savedUser.getLastName());
         response.setEmail(savedUser.getEmail());
         response.setRole(savedUser.getRole());
+        response.setUserStatus(savedUser.getUserStatus());
 
         return response;
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
+
         User user = userRepository
                 .findByEmail(request.getEmail())
                 .orElseThrow(() ->
@@ -85,10 +88,15 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String accessToken = jwtService.generateToken(user.getEmail());
-        RefreshToken refreshToken = refreshTokenService
-                .createRefreshToken(user);
+        RefreshToken refreshToken =
+                refreshTokenService.createRefreshToken(user);
 
-        return new AuthResponse(accessToken, refreshToken.getToken());
+        return new AuthResponse(
+                accessToken,
+                refreshToken.getToken(),
+                user.getUserStatus(),
+                user.getRole()
+        );
     }
 
     @Override
@@ -100,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = jwtService
                 .generateToken(refreshToken.getUser().getEmail());
 
-        return new AuthResponse(newAccessToken, refreshToken.getToken());
+        return new AuthResponse(newAccessToken, refreshToken.getToken() , null , null);
     }
 
     @Override

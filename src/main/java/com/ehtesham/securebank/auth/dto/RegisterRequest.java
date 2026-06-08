@@ -2,6 +2,7 @@ package com.ehtesham.securebank.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,10 +25,14 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     private String email;
 
-    @Size(
-            min = 8,
-            message = "Password must be at least 8 characters"
-    )
+    @Size(min = 8, message = "Password must be at least 8 characters")
     @NotBlank(message = "Password is required")
     private String password;
+
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+            regexp = "^[0-9]{10}$",
+            message = "Phone number must be 10 digits"
+    )
+    private String phoneNumber;
 }
