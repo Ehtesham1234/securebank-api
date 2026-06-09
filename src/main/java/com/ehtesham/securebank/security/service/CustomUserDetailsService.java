@@ -1,9 +1,10 @@
 package com.ehtesham.securebank.security.service;
 
 import com.ehtesham.securebank.common.enums.UserStatus;
+import com.ehtesham.securebank.common.exception.AccountClosedException;
+import com.ehtesham.securebank.common.exception.AccountSuspendedException;
 import com.ehtesham.securebank.user.entity.User;
 import com.ehtesham.securebank.user.repository.UserRepository;
-import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -28,17 +29,16 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+                        new UsernameNotFoundException(
+                                "User not found"));
 
-        // block suspended and closed users at login
         if (user.getUserStatus() == UserStatus.SUSPENDED) {
-            throw new LockedException(
-                    "Your account has been suspended. " +
-                            "Please contact support.");
+            throw new AccountSuspendedException(
+                    "Your account has been suspended. Contact support.");
         }
 
         if (user.getUserStatus() == UserStatus.CLOSED) {
-            throw new LockedException(
+            throw new AccountClosedException(
                     "This account has been closed.");
         }
 

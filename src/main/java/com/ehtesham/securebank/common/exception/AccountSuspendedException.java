@@ -1,6 +1,9 @@
 package com.ehtesham.securebank.common.exception;
 
-public class AccountSuspendedException extends RuntimeException {
+import org.springframework.security.core.AuthenticationException;
+
+public class AccountSuspendedException
+        extends AuthenticationException {
     public AccountSuspendedException(String message) {
         super(message);
     }

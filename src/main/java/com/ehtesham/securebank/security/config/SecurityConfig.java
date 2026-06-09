@@ -5,7 +5,9 @@ import com.ehtesham.securebank.security.filter.JwtAuthenticationFilter;
 import com.ehtesham.securebank.security.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,6 +31,11 @@ public class SecurityConfig {
         this.userStatusFilter = userStatusFilter;
     }
     @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -44,9 +51,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/kyc/**")
-                        .hasAuthority("ROLE_CUSTOMER")
+                        .hasAnyAuthority("ROLE_CUSTOMER", "ROLE_TELLER", "ROLE_ADMIN")
                         .requestMatchers("/api/v1/teller/**")
-                        .hasAuthority("ROLE_TELLER")
+                        .hasAnyAuthority("ROLE_TELLER", "ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/**")
                         .hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()

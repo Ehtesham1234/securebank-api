@@ -7,14 +7,15 @@ import com.ehtesham.securebank.auth.service.OtpService;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
 import com.ehtesham.securebank.common.enums.Role;
 import com.ehtesham.securebank.common.enums.UserStatus;
-import com.ehtesham.securebank.common.exception.EmailAlreadyExistsException;
-import com.ehtesham.securebank.common.exception.InvalidCredentialsException;
-import com.ehtesham.securebank.common.exception.InvalidOtpException;
+import com.ehtesham.securebank.common.exception.*;
 import com.ehtesham.securebank.notification.EmailService;
 import com.ehtesham.securebank.security.service.JwtService;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
 import com.ehtesham.securebank.user.repository.UserRepository;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +30,19 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final AuthenticationManager authenticationManager;
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService) {
+            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.otpService = otpService;
         this.emailService = emailService;
+        this.authenticationManager = authenticationManager;
     }
 
     @Override
@@ -74,20 +77,40 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
 
+        // Spring Security handles everything:
+        // → calls CustomUserDetailsService.loadUserByUsername()
+        // → checks SUSPENDED/CLOSED status
+        // → verifies password with BCrypt
+        // → throws exceptions if anything fails
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (AccountSuspendedException ex) {
+            throw ex;
+        } catch (AccountClosedException ex) {
+            throw ex;
+        }catch (AuthenticationException ex) {
+
+            throw new InvalidCredentialsException(
+                    "Invalid email or password");
+        }
+
+        // if we reach here — authentication succeeded
+        // load user for token generation + refresh token
         User user = userRepository
                 .findByEmail(request.getEmail())
                 .orElseThrow(() ->
                         new InvalidCredentialsException(
                                 "Invalid email or password"));
 
-        if (!passwordEncoder.matches(
-                request.getPassword(),
-                user.getPassword())) {
-            throw new InvalidCredentialsException(
-                    "Invalid email or password");
-        }
+        String accessToken = jwtService.generateToken(
+                user.getEmail(),
+                "ROLE_" + user.getRole().name());
 
-        String accessToken = jwtService.generateToken(user.getEmail());
         RefreshToken refreshToken =
                 refreshTokenService.createRefreshToken(user);
 
@@ -105,10 +128,17 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken refreshToken = refreshTokenService
                 .verifyRefreshToken(request.getRefreshToken());
 
-        String newAccessToken = jwtService
-                .generateToken(refreshToken.getUser().getEmail());
+        String newAccessToken = jwtService.generateToken(
+                refreshToken.getUser().getEmail(),
+                "ROLE_" +  refreshToken.getUser().getRole().name()  // ← pass role
+        );
 
-        return new AuthResponse(newAccessToken, refreshToken.getToken() , null , null);
+        return new AuthResponse(
+                newAccessToken,
+                refreshToken.getToken(),
+                refreshToken.getUser().getUserStatus(),  // ← real value
+                refreshToken.getUser().getRole()         // ← real value
+        );
     }
 
     @Override

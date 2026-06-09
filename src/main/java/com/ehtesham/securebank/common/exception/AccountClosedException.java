@@ -1,6 +1,9 @@
 package com.ehtesham.securebank.common.exception;
 
-public class AccountClosedException extends RuntimeException {
+import org.springframework.security.core.AuthenticationException;
+
+public class AccountClosedException
+        extends AuthenticationException {
     public AccountClosedException(String message) {
         super(message);
     }

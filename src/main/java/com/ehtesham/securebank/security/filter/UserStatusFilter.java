@@ -40,11 +40,6 @@ public class UserStatusFilter extends OncePerRequestFilter {
 
         String requestURI = request.getRequestURI();
 
-        // skip auth endpoints entirely
-        if (requestURI.startsWith("/api/v1/auth/")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         Authentication authentication = SecurityContextHolder
                 .getContext()
@@ -64,8 +59,17 @@ public class UserStatusFilter extends OncePerRequestFilter {
                 .findByEmail(email)
                 .orElse(null);
 
+//        if (user == null) {
+//            filterChain.doFilter(request, response);
+//            return;
+//        }
         if (user == null) {
-            filterChain.doFilter(request, response);
+
+            SecurityContextHolder.clearContext();
+
+            response.setStatus(
+                    HttpServletResponse.SC_UNAUTHORIZED);
+
             return;
         }
 
@@ -81,30 +85,13 @@ public class UserStatusFilter extends OncePerRequestFilter {
             return;
         }
 
-        // SUSPENDED → block everything
-        if (user.getUserStatus() == UserStatus.SUSPENDED) {
-            writeErrorResponse(
-                    response,
-                    HttpServletResponse.SC_FORBIDDEN,
-                    "ACCOUNT_SUSPENDED",
-                    "Your account has been suspended. " +
-                            "Please contact support.",
-                    requestURI);
-            return;
-        }
-
-        // CLOSED → block everything
-        if (user.getUserStatus() == UserStatus.CLOSED) {
-            writeErrorResponse(
-                    response,
-                    HttpServletResponse.SC_FORBIDDEN,
-                    "ACCOUNT_CLOSED",
-                    "This account has been closed.",
-                    requestURI);
-            return;
-        }
-
         filterChain.doFilter(request, response);
+    }
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+
+        return request.getRequestURI()
+                .startsWith("/api/v1/auth/");
     }
 
     private void writeErrorResponse(
