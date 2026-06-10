@@ -89,12 +89,9 @@ public class AuthServiceImpl implements AuthService {
                             request.getPassword()
                     )
             );
-        } catch (AccountSuspendedException ex) {
+        } catch (AccountSuspendedException | AccountClosedException ex) {
             throw ex;
-        } catch (AccountClosedException ex) {
-            throw ex;
-        }catch (AuthenticationException ex) {
-
+        } catch (AuthenticationException ex) {
             throw new InvalidCredentialsException(
                     "Invalid email or password");
         }
