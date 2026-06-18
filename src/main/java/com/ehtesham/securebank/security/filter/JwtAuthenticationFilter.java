@@ -1,11 +1,13 @@
 package com.ehtesham.securebank.security.filter;
 
+import com.ehtesham.securebank.security.service.CustomUserDetailsService;
 import com.ehtesham.securebank.security.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -18,13 +20,14 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-
+    private final CustomUserDetailsService customUserDetailsService;
 
     public JwtAuthenticationFilter(
-            JwtService jwtService) {
+            JwtService jwtService, CustomUserDetailsService customUserDetailsService) {
 
         this.jwtService = jwtService;
 
+        this.customUserDetailsService = customUserDetailsService;
     }
     @Override
     protected void doFilterInternal(
@@ -53,17 +56,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // validate signature + expiry only — no DB hit
                 if (jwtService.isTokenValid(jwt)) {
 
-                    // build authorities from JWT claims directly
-                    String role = jwtService.extractRole(jwt);
-
-                    List<SimpleGrantedAuthority> authorities = List.of(
-                            new SimpleGrantedAuthority(role));
+                    UserDetails userDetails=customUserDetailsService.loadUserByUsername(userEmail);
 
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
-                                    userEmail,
+                                    userDetails,
                                     null,
-                                    authorities);
+                                    userDetails.getAuthorities());
 
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource()

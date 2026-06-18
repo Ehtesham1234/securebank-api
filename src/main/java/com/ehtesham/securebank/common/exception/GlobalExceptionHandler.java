@@ -3,6 +3,7 @@ package com.ehtesham.securebank.common.exception;
 import com.ehtesham.securebank.common.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
@@ -16,162 +17,150 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+// ── Validation ──────────────────────────────────────────────
 
-    // ── Validation ──────────────────────────────────────────────
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ErrorResponse handleValidationException(
+    public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
         Map<String, String> errors = new HashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            errors.put(fieldError.getField(),
-                    fieldError.getDefaultMessage());
+            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        return ErrorResponse.validation(
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.validation(
                 "Input validation failed",
                 request.getRequestURI(),
-                errors);
+                errors));
     }
 
-    // ── Auth exceptions ─────────────────────────────────────────
+// ── Auth exceptions ─────────────────────────────────────────
 
-    @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ErrorResponse handleEmailAlreadyExists(
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
             EmailAlreadyExistsException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(
                 HttpStatus.CONFLICT.value(),
                 "CONFLICT",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ErrorResponse handleInvalidCredentials(
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(),
                 "UNAUTHORIZED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(TokenExpiredException.class)
-    public ErrorResponse handleTokenExpired(
+    public ResponseEntity<ErrorResponse> handleTokenExpired(
             TokenExpiredException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(),
                 "TOKEN_EXPIRED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(InvalidOtpException.class)
-    public ErrorResponse handleInvalidOtp(
+    public ResponseEntity<ErrorResponse> handleInvalidOtp(
             InvalidOtpException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
                 "INVALID_OTP",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    // ── Account status exceptions ────────────────────────────────
+// ── Account status exceptions ────────────────────────────────
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(KycNotVerifiedException.class)
-    public ErrorResponse handleKycNotVerified(
+    public ResponseEntity<ErrorResponse> handleKycNotVerified(
             KycNotVerifiedException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "KYC_NOT_VERIFIED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(AccountSuspendedException.class)
-    public ErrorResponse handleAccountSuspended(
+    public ResponseEntity<ErrorResponse> handleAccountSuspended(
             AccountSuspendedException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCOUNT_SUSPENDED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(AccountClosedException.class)
-    public ErrorResponse handleAccountClosed(
+    public ResponseEntity<ErrorResponse> handleAccountClosed(
             AccountClosedException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCOUNT_CLOSED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    // ── Spring Security exceptions ───────────────────────────────
+// ── Spring Security exceptions ───────────────────────────────
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(LockedException.class)
-    public ErrorResponse handleLocked(
+    public ResponseEntity<ErrorResponse> handleLocked(
             LockedException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCOUNT_LOCKED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(DisabledException.class)
-    public ErrorResponse handleDisabled(
+    public ResponseEntity<ErrorResponse> handleDisabled(
             DisabledException ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "ACCOUNT_DISABLED",
                 ex.getMessage(),
-                request.getRequestURI());
+                request.getRequestURI()));
     }
 
-    // ── Generic fallback ─────────────────────────────────────────
+// ── Generic fallback ─────────────────────────────────────────
 
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
-    public ErrorResponse handleGenericException(
+    public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex,
             HttpServletRequest request) {
 
-        return ErrorResponse.of(
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred",
-                request.getRequestURI());
+                request.getRequestURI()));
     }
+
 }
