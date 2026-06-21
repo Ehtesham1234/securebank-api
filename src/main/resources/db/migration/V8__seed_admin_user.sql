@@ -12,7 +12,7 @@ INSERT INTO users (
              'Super',
              'Admin',
              'admin@securebank.com',
-             '$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+             '$2a$10$OCDQggV490UfAJKvRuRDP.cZYlKhXRDXWUEfCyZGnDDJ/bqFZHHny',
              '0000000000',
              'ADMIN',
              'ACTIVE',

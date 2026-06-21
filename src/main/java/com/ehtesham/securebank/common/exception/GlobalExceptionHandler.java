@@ -163,4 +163,27 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()));
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(KycAlreadySubmittedException.class)
+    public ErrorResponse handleKycAlreadySubmitted(
+            KycAlreadySubmittedException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.CONFLICT.value(),
+                "KYC_ALREADY_SUBMITTED",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AccountOperationException.class)
+    public ErrorResponse handleAccountOperation(
+            AccountOperationException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "ACCOUNT_OPERATION_ERROR",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 }

@@ -27,4 +27,46 @@ public class EmailService {
         );
         mailSender.send(message);
     }
+
+    @Async
+    public void sendKycSubmissionNotification(String customerEmail) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(customerEmail);
+        message.setSubject("SecureBank - KYC Submission Received");
+        message.setText(
+                "Your KYC documents have been received and are under review.\n\n" +
+                        "We will notify you once the verification is complete.\n\n" +
+                        "SecureBank Team"
+        );
+        mailSender.send(message);
+    }
+
+    @Async
+    public void sendKycVerifiedNotification(String customerEmail) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(customerEmail);
+        message.setSubject("SecureBank - KYC Verified Successfully");
+        message.setText(
+                "Congratulations! Your KYC has been verified.\n\n" +
+                        "Your SAVINGS account has been created.\n" +
+                        "You can now access all banking features.\n\n" +
+                        "SecureBank Team"
+        );
+        mailSender.send(message);
+    }
+
+    @Async
+    public void sendKycRejectedNotification(
+            String customerEmail, String reason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(customerEmail);
+        message.setSubject("SecureBank - KYC Verification Failed");
+        message.setText(
+                "Your KYC verification was unsuccessful.\n\n" +
+                        "Reason: " + reason + "\n\n" +
+                        "Please resubmit with correct documents.\n\n" +
+                        "SecureBank Team"
+        );
+        mailSender.send(message);
+    }
 }
