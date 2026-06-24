@@ -9,5 +9,7 @@ public interface AuthService {
     AuthResponse refresh(RefreshTokenRequest request);
     void logout(RefreshTokenRequest request);
     void forgotPassword(ForgotPasswordRequest request);    // ← new
-    void resetPassword(ResetPasswordRequest request);      // ← new
+    void resetPassword(ResetPasswordRequest request);
+
+    UserResponse createStaffUser(CreateStaffRequest request);// ← new
 }

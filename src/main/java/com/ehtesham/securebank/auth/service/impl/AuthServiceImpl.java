@@ -187,4 +187,41 @@ public class AuthServiceImpl implements AuthService {
         // 5. revoke all refresh tokens — force re-login on all devices
         refreshTokenService.revokeAllUserTokens(user);
     }
+
+    @Override
+    @Transactional
+    public UserResponse createStaffUser(CreateStaffRequest request) {
+
+        if (request.getRole() != Role.TELLER && request.getRole() != Role.ADMIN) {
+            throw new InvalidRoleException(
+                    "Role must be TELLER or ADMIN for staff creation");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new EmailAlreadyExistsException("Email already exists");
+        }
+
+        User user = new User();
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setRole(request.getRole());
+
+        // staff accounts skip KYC entirely — verified by employment,
+        // not by the customer KYC process
+        user.setUserStatus(UserStatus.ACTIVE);
+
+        User savedUser = userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(savedUser.getId())
+                .firstName(savedUser.getFirstName())
+                .lastName(savedUser.getLastName())
+                .email(savedUser.getEmail())
+                .role(savedUser.getRole())
+                .userStatus(savedUser.getUserStatus())
+                .build();
+    }
 }

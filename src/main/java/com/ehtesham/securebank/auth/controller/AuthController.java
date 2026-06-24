@@ -6,6 +6,7 @@ import com.ehtesham.securebank.common.response.ApiResponse;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -72,5 +73,18 @@ public class AuthController {
         authService.resetPassword(request);
         return ResponseEntity.ok(
                 ApiResponse.success("Password reset successful"));
+    }
+
+    @PostMapping("/admin/users/create-staff")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> createStaffUser(
+            @Valid @RequestBody CreateStaffRequest request) {
+
+        UserResponse response = authService.createStaffUser(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "Staff account created successfully", response));
     }
 }

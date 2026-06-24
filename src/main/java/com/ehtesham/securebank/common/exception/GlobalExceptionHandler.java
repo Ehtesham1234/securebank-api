@@ -119,7 +119,17 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI()));
     }
-
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidRoleException.class)
+    public ErrorResponse handleInvalidRole(
+            InvalidRoleException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_ROLE",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Account status exceptions ────────────────────────────────
 
     @ExceptionHandler(KycNotVerifiedException.class)
