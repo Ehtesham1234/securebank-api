@@ -29,8 +29,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException(
-                                "User not found"));
+                        new UsernameNotFoundException("User not found"));
 
         if (user.getUserStatus() == UserStatus.SUSPENDED) {
             throw new AccountSuspendedException(
@@ -42,9 +41,11 @@ public class CustomUserDetailsService implements UserDetailsService {
                     "This account has been closed.");
         }
 
-        return new org.springframework.security.core.userdetails.User(
+        return new CustomUserPrincipal(
+                user.getId(),
                 user.getEmail(),
                 user.getPassword(),
+                user.getUserStatus(),
                 List.of(new SimpleGrantedAuthority(
                         "ROLE_" + user.getRole().name()
                 ))

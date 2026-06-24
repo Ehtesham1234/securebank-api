@@ -1,15 +1,12 @@
 package com.ehtesham.securebank.security.filter;
 
 import com.ehtesham.securebank.common.enums.UserStatus;
-import com.ehtesham.securebank.user.entity.User;
-import com.ehtesham.securebank.user.repository.UserRepository;
+import com.ehtesham.securebank.security.service.CustomUserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,13 +18,9 @@ import java.util.Map;
 @Component
 public class UserStatusFilter extends OncePerRequestFilter {
 
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
-    public UserStatusFilter(
-            UserRepository userRepository,
-            ObjectMapper objectMapper) {
-        this.userRepository = userRepository;
+    public UserStatusFilter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -40,41 +33,17 @@ public class UserStatusFilter extends OncePerRequestFilter {
 
         String requestURI = request.getRequestURI();
 
+        // read the SAME object JwtAuthenticationFilter already loaded
+        // no new DB query happens here
+        Object attribute = request.getAttribute(
+                JwtAuthenticationFilter.USER_DETAILS_ATTRIBUTE);
 
-        Authentication authentication = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
-
-        // skip if not authenticated
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || authentication.getPrincipal()
-                .equals("anonymousUser")) {
+        if (!(attribute instanceof CustomUserPrincipal principal)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String email = authentication.getName();
-        User user = userRepository
-                .findByEmail(email)
-                .orElse(null);
-
-//        if (user == null) {
-//            filterChain.doFilter(request, response);
-//            return;
-//        }
-        if (user == null) {
-
-            SecurityContextHolder.clearContext();
-
-            response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED);
-
-            return;
-        }
-
-        // PENDING_KYC → can only access KYC endpoints
-        if (user.getUserStatus() == UserStatus.PENDING_KYC
+        if (principal.getUserStatus() == UserStatus.PENDING_KYC
                 && !requestURI.startsWith("/api/v1/kyc/")) {
             writeErrorResponse(
                     response,
@@ -87,11 +56,10 @@ public class UserStatusFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-
-        return request.getRequestURI()
-                .startsWith("/api/v1/auth/");
+        return request.getRequestURI().startsWith("/api/v1/auth/");
     }
 
     private void writeErrorResponse(

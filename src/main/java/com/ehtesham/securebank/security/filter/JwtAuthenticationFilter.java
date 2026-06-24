@@ -6,29 +6,31 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.io.IOException;
-import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    // shared key name — UserStatusFilter reads this exact attribute
+    public static final String USER_DETAILS_ATTRIBUTE = "AUTHENTICATED_USER_DETAILS";
 
     private final JwtService jwtService;
     private final CustomUserDetailsService customUserDetailsService;
 
     public JwtAuthenticationFilter(
-            JwtService jwtService, CustomUserDetailsService customUserDetailsService) {
-
+            JwtService jwtService,
+            CustomUserDetailsService customUserDetailsService) {
         this.jwtService = jwtService;
-
         this.customUserDetailsService = customUserDetailsService;
     }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -38,8 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null
-                || !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -53,10 +54,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     && SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
 
-                // validate signature + expiry only — no DB hit
                 if (jwtService.isTokenValid(jwt)) {
 
-                    UserDetails userDetails=customUserDetailsService.loadUserByUsername(userEmail);
+                    // SINGLE DB hit — loaded once here
+                    UserDetails userDetails =
+                            customUserDetailsService.loadUserByUsername(userEmail);
 
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
@@ -71,19 +73,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder
                             .getContext()
                             .setAuthentication(authToken);
+
+                    // share the SAME loaded object forward —
+                    // UserStatusFilter will read this instead of
+                    // querying the database again
+                    request.setAttribute(USER_DETAILS_ATTRIBUTE, userDetails);
                 }
             }
         } catch (Exception e) {
-            // invalid token — just continue, Spring Security will block
             SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
     }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-
-        return request.getRequestURI()
-                .startsWith("/api/v1/auth/");
+        return request.getRequestURI().startsWith("/api/v1/auth/");
     }
 }
