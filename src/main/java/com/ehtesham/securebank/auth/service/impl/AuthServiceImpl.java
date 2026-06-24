@@ -9,6 +9,7 @@ import com.ehtesham.securebank.common.enums.Role;
 import com.ehtesham.securebank.common.enums.UserStatus;
 import com.ehtesham.securebank.common.exception.*;
 import com.ehtesham.securebank.notification.EmailService;
+import com.ehtesham.securebank.security.ratelimit.RateLimiterService;
 import com.ehtesham.securebank.security.service.JwtService;
 import com.ehtesham.securebank.user.dto.UserResponse;
 import com.ehtesham.securebank.user.entity.User;
@@ -19,6 +20,10 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.Duration;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -31,11 +36,13 @@ public class AuthServiceImpl implements AuthService {
     private final OtpService otpService;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
+    private final RateLimiterService rateLimiterService;
+
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService, AuthenticationManager authenticationManager) {
+            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService, AuthenticationManager authenticationManager, RateLimiterService rateLimiterService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -43,10 +50,31 @@ public class AuthServiceImpl implements AuthService {
         this.otpService = otpService;
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
+        this.rateLimiterService = rateLimiterService;
     }
 
+    //for reg helper
+    private String getClientIp() {
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder
+                        .currentRequestAttributes();
+        return attributes.getRequest().getRemoteAddr();
+    }
     @Override
     public UserResponse register(RegisterRequest request) {
+
+        String clientIp = getClientIp();
+        String rateLimitKey = "register:" + clientIp;
+
+        boolean allowed = rateLimiterService.tryConsume(
+                rateLimitKey,
+                3,                          // 3 registrations
+                Duration.ofHours(1));       // per hour, per IP
+
+        if (!allowed) {
+            throw new RateLimitExceededException(
+                    "Too many registration attempts. Please try again later.");
+        }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException("Email already exists");
@@ -76,6 +104,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        // rate limit by EMAIL, not IP — this specifically protects
+        // against brute-forcing ONE account's password, regardless
+        // of how many different IPs the attacker uses
+        String rateLimitKey = "login:" + request.getEmail();
+
+        boolean allowed = rateLimiterService.tryConsume(
+                rateLimitKey,
+                5,                          // 5 attempts
+                Duration.ofMinutes(15));    // per 15 minutes
+
+        if (!allowed) {
+            throw new RateLimitExceededException(
+                    "Too many login attempts. Please try again later.");
+        }
 
         // Spring Security handles everything:
         // → calls CustomUserDetailsService.loadUserByUsername()

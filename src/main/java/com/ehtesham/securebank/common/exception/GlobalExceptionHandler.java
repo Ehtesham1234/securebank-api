@@ -217,7 +217,17 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
-
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ErrorResponse handleRateLimitExceeded(
+            RateLimitExceededException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                "RATE_LIMIT_EXCEEDED",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Generic fallback ─────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)
