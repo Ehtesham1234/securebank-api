@@ -4,9 +4,11 @@ import com.ehtesham.securebank.common.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -17,6 +19,39 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+
+
+
+    // ── Malformed request handlers (NEW — add these near the top) ──
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ErrorResponse handleMalformedJson(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+
+        return ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "MALFORMED_REQUEST",
+                "Request body is missing or not valid JSON",
+                request.getRequestURI());
+    }
+
+    @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ErrorResponse handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException ex,
+            HttpServletRequest request) {
+
+        return ErrorResponse.of(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+                "UNSUPPORTED_MEDIA_TYPE",
+                "Content-Type not supported for this endpoint. " +
+                        "Expected: " + ex.getSupportedMediaTypes(),
+                request.getRequestURI());
+    }
+
 // ── Validation ──────────────────────────────────────────────
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -149,20 +184,6 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()));
     }
 
-// ── Generic fallback ─────────────────────────────────────────
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
-            Exception ex,
-            HttpServletRequest request) {
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "INTERNAL_SERVER_ERROR",
-                "An unexpected error occurred",
-                request.getRequestURI()));
-    }
-
     @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(KycAlreadySubmittedException.class)
     public ErrorResponse handleKycAlreadySubmitted(
@@ -185,5 +206,19 @@ public class GlobalExceptionHandler {
                 "ACCOUNT_OPERATION_ERROR",
                 ex.getMessage(),
                 request.getRequestURI());
+    }
+
+// ── Generic fallback ─────────────────────────────────────────
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(
+            Exception ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred",
+                request.getRequestURI()));
     }
 }
