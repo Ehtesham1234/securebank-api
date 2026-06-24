@@ -40,6 +40,19 @@ public class AccountServiceImpl implements AccountService {
         this.fdRepository = fdRepository;
         this.userRepository = userRepository;
     }
+    @Override
+    public Account getOwnedAccount(Long accountId, User user) {
+
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Account not found"));
+
+        if (!account.getUser().getId().equals(user.getId())) {
+            throw new ResourceNotFoundException("Account not found");
+        }
+
+        return account;
+    }
 
     @Override
     @Transactional
@@ -126,17 +139,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponse getAccountById(Long id, String email) {
 
         User user = getUser(email);
-
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Account not found"));
-
-        // ensure account belongs to this user
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new ResourceNotFoundException("Account not found");
-            // same error — don't reveal account exists for other user
-        }
+        Account account = getOwnedAccount(id, user);
 
         return mapToResponse(account);
     }

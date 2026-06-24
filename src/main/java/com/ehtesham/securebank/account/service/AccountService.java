@@ -2,6 +2,7 @@ package com.ehtesham.securebank.account.service;
 
 import com.ehtesham.securebank.account.dto.AccountApplicationRequest;
 import com.ehtesham.securebank.account.dto.AccountResponse;
+import com.ehtesham.securebank.account.entity.Account;
 import com.ehtesham.securebank.user.entity.User;
 
 import java.util.List;
@@ -30,4 +31,6 @@ public interface AccountService {
     AccountResponse unfreezeAccount(Long id);
 
     AccountResponse closeAccount(Long id);
+
+    Account getOwnedAccount(Long accountId, User user);
 }
