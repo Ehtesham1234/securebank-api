@@ -3,6 +3,7 @@ package com.ehtesham.securebank.auth.service.impl;
 import com.ehtesham.securebank.auth.dto.*;
 import com.ehtesham.securebank.auth.entity.RefreshToken;
 import com.ehtesham.securebank.auth.service.AuthService;
+import com.ehtesham.securebank.auth.service.LoginAttemptService;
 import com.ehtesham.securebank.auth.service.OtpService;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
 import com.ehtesham.securebank.common.enums.Role;
@@ -24,6 +25,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -37,12 +39,12 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
     private final RateLimiterService rateLimiterService;
-
+    private final LoginAttemptService loginAttemptService;
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService, AuthenticationManager authenticationManager, RateLimiterService rateLimiterService) {
+            RefreshTokenService refreshTokenService, OtpService otpService, EmailService emailService, AuthenticationManager authenticationManager, RateLimiterService rateLimiterService, LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -51,6 +53,7 @@ public class AuthServiceImpl implements AuthService {
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
         this.rateLimiterService = rateLimiterService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     //for reg helper
@@ -102,6 +105,7 @@ public class AuthServiceImpl implements AuthService {
         return response;
     }
 
+    @Transactional
     @Override
     public AuthResponse login(LoginRequest request) {
         // rate limit by EMAIL, not IP — this specifically protects
@@ -111,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
         boolean allowed = rateLimiterService.tryConsume(
                 rateLimitKey,
-                5,                          // 5 attempts
+                10,                          // 5 attempts
                 Duration.ofMinutes(15));    // per 15 minutes
 
         if (!allowed) {
@@ -131,13 +135,53 @@ public class AuthServiceImpl implements AuthService {
                             request.getPassword()
                     )
             );
-        } catch (AccountSuspendedException | AccountClosedException ex) {
+        }
+        catch (AccountSuspendedException | AccountClosedException ex) {
             throw ex;
-        } catch (AuthenticationException ex) {
+        }
+        catch (org.springframework.security.authentication.DisabledException ex) {
+
+            // isEnabled() returned false — could be SUSPENDED or CLOSED,
+            // look up which one to give the correct specific message
+            User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+
+            if (user != null && user.getUserStatus() == UserStatus.CLOSED) {
+                throw new AccountClosedException("This account has been closed.");
+            }
+
+            throw new AccountSuspendedException(
+                    "Your account has been suspended. Contact support.");
+
+        }
+        catch (org.springframework.security.authentication.LockedException ex) {
+
+            // Spring's own LockedException doesn't carry OUR custom
+            // "minutes remaining" message — we need to compute that here instead
+            User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+
+            String message = "Account is locked due to too many failed login attempts.";
+
+            if (user != null && user.getLockedUntil() != null) {
+                long minutesRemaining = java.time.Duration.between(
+                        LocalDateTime.now(), user.getLockedUntil()).toMinutes();
+                message += " Try again in " + (minutesRemaining + 1) + " minute(s).";
+            }
+
+            throw new AccountLockedException(message);
+
+        }
+        catch (AuthenticationException ex) {
+
+            // calling through the INTERFACE, on a DIFFERENT bean —
+            // this goes through Spring's proxy correctly,
+            // REQUIRES_NEW actually takes effect now
+            loginAttemptService.recordFailedAttempt(request.getEmail());
             throw new InvalidCredentialsException(
                     "Invalid email or password");
         }
 
+        // NEW — successful login resets the counter back to 0
+        loginAttemptService.resetAttempts(request.getEmail());
         // if we reach here — authentication succeeded
         // load user for token generation + refresh token
         User user = userRepository
@@ -147,18 +191,13 @@ public class AuthServiceImpl implements AuthService {
                                 "Invalid email or password"));
 
         String accessToken = jwtService.generateToken(
-                user.getEmail(),
-                "ROLE_" + user.getRole().name());
+                user.getEmail(), "ROLE_" + user.getRole().name());
 
-        RefreshToken refreshToken =
-                refreshTokenService.createRefreshToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         return new AuthResponse(
-                accessToken,
-                refreshToken.getToken(),
-                user.getUserStatus(),
-                user.getRole()
-        );
+                accessToken, refreshToken.getToken(),
+                user.getUserStatus(), user.getRole());
     }
 
     @Override

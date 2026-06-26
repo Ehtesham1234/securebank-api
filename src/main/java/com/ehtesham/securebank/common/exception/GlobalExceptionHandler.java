@@ -228,6 +228,17 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
+    @ResponseStatus(HttpStatus.LOCKED)
+    @ExceptionHandler(AccountLockedException.class)
+    public ErrorResponse handleAccountLocked(
+            AccountLockedException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.LOCKED.value(),
+                "ACCOUNT_LOCKED",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Generic fallback ─────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)
