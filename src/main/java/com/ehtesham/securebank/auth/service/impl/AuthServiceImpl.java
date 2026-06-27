@@ -4,12 +4,13 @@ import com.ehtesham.securebank.auth.dto.*;
 import com.ehtesham.securebank.auth.entity.RefreshToken;
 import com.ehtesham.securebank.auth.service.AuthService;
 import com.ehtesham.securebank.auth.service.LoginAttemptService;
-import com.ehtesham.securebank.auth.service.OtpService;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
 import com.ehtesham.securebank.common.enums.Role;
 import com.ehtesham.securebank.common.enums.UserStatus;
 import com.ehtesham.securebank.common.exception.*;
 import com.ehtesham.securebank.notification.EmailService;
+import com.ehtesham.securebank.otp.enums.OtpPurpose;
+import com.ehtesham.securebank.otp.service.OtpService;
 import com.ehtesham.securebank.security.ratelimit.RateLimiterService;
 import com.ehtesham.securebank.security.service.JwtService;
 import com.ehtesham.securebank.user.dto.UserResponse;
@@ -21,8 +22,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -56,31 +56,45 @@ public class AuthServiceImpl implements AuthService {
         this.loginAttemptService = loginAttemptService;
     }
 
-    //for reg helper
-    private String getClientIp() {
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder
-                        .currentRequestAttributes();
-        return attributes.getRequest().getRemoteAddr();
-    }
     @Override
-    public UserResponse register(RegisterRequest request) {
+    @Transactional
+    public UserResponse register(RegisterRequest request, String clientIp) {
 
-        String clientIp = getClientIp();
         String rateLimitKey = "register:" + clientIp;
 
         boolean allowed = rateLimiterService.tryConsume(
-                rateLimitKey,
-                3,                          // 3 registrations
-                Duration.ofHours(1));       // per hour, per IP
+                rateLimitKey, 3, Duration.ofHours(1));
 
         if (!allowed) {
             throw new RateLimitExceededException(
                     "Too many registration attempts. Please try again later.");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new EmailAlreadyExistsException("Email already exists");
+        User existingUser = userRepository
+                .findByEmail(request.getEmail()).orElse(null);
+
+        if (existingUser != null) {
+
+            if (existingUser.isEmailVerified()) {
+                throw new EmailAlreadyExistsException(
+                        "Email already exists. Please login instead.");
+            }
+
+            String otp = otpService.generateAndSaveOtp(
+                    existingUser.getEmail(), OtpPurpose.EMAIL_VERIFICATION);
+
+            emailService.sendOtpEmail(
+                    existingUser.getEmail(), otp, "Email Verification");
+
+            return UserResponse.builder()
+                    .id(existingUser.getId())
+                    .firstName(existingUser.getFirstName())
+                    .lastName(existingUser.getLastName())
+                    .email(existingUser.getEmail())
+                    .role(existingUser.getRole())
+                    .userStatus(existingUser.getUserStatus())
+                    .emailVerified(existingUser.isEmailVerified())
+                    .build();
         }
 
         User user = new User();
@@ -88,21 +102,26 @@ public class AuthServiceImpl implements AuthService {
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-//        user.setPhoneNumber(request.getPhoneNumber());
         user.setRole(Role.CUSTOMER);
         user.setUserStatus(UserStatus.PENDING_KYC);
 
         User savedUser = userRepository.save(user);
 
-        UserResponse response = new UserResponse();
-        response.setId(savedUser.getId());
-        response.setFirstName(savedUser.getFirstName());
-        response.setLastName(savedUser.getLastName());
-        response.setEmail(savedUser.getEmail());
-        response.setRole(savedUser.getRole());
-        response.setUserStatus(savedUser.getUserStatus());
+        String otp = otpService.generateAndSaveOtp(
+                savedUser.getEmail(), OtpPurpose.EMAIL_VERIFICATION);
 
-        return response;
+        emailService.sendOtpEmail(
+                savedUser.getEmail(), otp, "Email Verification");
+
+        return UserResponse.builder()
+                .id(savedUser.getId())
+                .firstName(savedUser.getFirstName())
+                .lastName(savedUser.getLastName())
+                .email(savedUser.getEmail())
+                .role(savedUser.getRole())
+                .userStatus(savedUser.getUserStatus())
+                .emailVerified(savedUser.isEmailVerified())
+                .build();
     }
 
     @Transactional
@@ -147,6 +166,17 @@ public class AuthServiceImpl implements AuthService {
 
             if (user != null && user.getUserStatus() == UserStatus.CLOSED) {
                 throw new AccountClosedException("This account has been closed.");
+            }
+            if (user != null && user.getUserStatus() == UserStatus.SUSPENDED) {
+                throw new AccountSuspendedException(
+                        "Your account has been suspended. Contact support.");
+            }
+
+            if (user != null && !user.isEmailVerified()) {
+                throw new EmailNotVerifiedException(
+                        "Please verify your email before logging in. " +
+                                "Check your inbox for the verification OTP, or " +
+                                "request a new one.");
             }
 
             throw new AccountSuspendedException(
@@ -226,7 +256,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void forgotPassword(ForgotPasswordRequest request) {
+    public void forgotPassword(EmailOnlyRequest request) {
 
         // always return success even if email doesn't exist
         // security: don't reveal which emails are registered
@@ -234,9 +264,9 @@ public class AuthServiceImpl implements AuthService {
                 .existsByEmail(request.getEmail());
 
         if (userExists) {
-            String otp = otpService
-                    .generateAndSaveOtp(request.getEmail());
-            emailService.sendOtpEmail(request.getEmail(), otp);
+            String otp = otpService.generateAndSaveOtp(
+                    request.getEmail(), OtpPurpose.PASSWORD_RESET);   // ← added purpose
+            emailService.sendOtpEmail(request.getEmail(), otp ,"Password Reset");
         }
 
         // if user doesn't exist, we do nothing but still return success
@@ -255,7 +285,7 @@ public class AuthServiceImpl implements AuthService {
         // same error — don't reveal email existence
 
         // 2. verify OTP
-        otpService.verifyOtp(request.getEmail(), request.getOtp());
+        otpService.verifyOtp(request.getEmail(), request.getOtp(), OtpPurpose.PASSWORD_RESET);
 
         // 3. update password
         user.setPassword(
@@ -263,7 +293,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         // 4. invalidate OTP so it can't be reused
-        otpService.invalidateOtps(request.getEmail());
+        otpService.invalidateOtps(request.getEmail(), OtpPurpose.PASSWORD_RESET);
 
         // 5. revoke all refresh tokens — force re-login on all devices
         refreshTokenService.revokeAllUserTokens(user);
@@ -289,6 +319,8 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhoneNumber(request.getPhoneNumber());
         user.setRole(request.getRole());
+        //email verified because admin adding it
+        user.setEmailVerified(true);
 
         // staff accounts skip KYC entirely — verified by employment,
         // not by the customer KYC process
@@ -304,5 +336,35 @@ public class AuthServiceImpl implements AuthService {
                 .role(savedUser.getRole())
                 .userStatus(savedUser.getUserStatus())
                 .build();
+    }
+// AuthServiceImpl — two new methods added, using the SAME
+// otpService and emailService it already has injected
+
+    @Override
+    public void sendEmailVerificationOtp(String email) {
+
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null || user.isEmailVerified()) {
+            return;   // silent, same information-hiding principle as forgotPassword
+        }
+
+        String otp = otpService.generateAndSaveOtp(
+                email, OtpPurpose.EMAIL_VERIFICATION);
+
+        emailService.sendOtpEmail(email, otp ,"Email Verification");   // REUSES existing method, no new EmailService method needed
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String email, String otp) {
+
+        otpService.verifyOtp(email, otp, OtpPurpose.EMAIL_VERIFICATION);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidOtpException("User not found"));
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
     }
 }

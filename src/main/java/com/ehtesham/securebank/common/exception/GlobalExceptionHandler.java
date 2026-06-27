@@ -239,6 +239,19 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
+
+    // GlobalExceptionHandler
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ErrorResponse handleEmailNotVerified(
+            EmailNotVerifiedException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(),
+                "EMAIL_NOT_VERIFIED",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Generic fallback ─────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)

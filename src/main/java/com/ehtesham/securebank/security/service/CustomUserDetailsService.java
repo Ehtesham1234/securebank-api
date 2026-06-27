@@ -40,6 +40,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getPassword(),
                 user.getUserStatus(),
                 user.getLockedUntil(),
+                user.isEmailVerified(),
                 List.of(new SimpleGrantedAuthority(
                         "ROLE_" + user.getRole().name()
                 ))

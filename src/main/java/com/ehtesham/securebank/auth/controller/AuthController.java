@@ -4,6 +4,7 @@ import com.ehtesham.securebank.auth.dto.*;
 import com.ehtesham.securebank.auth.service.AuthService;
 import com.ehtesham.securebank.common.response.ApiResponse;
 import com.ehtesham.securebank.user.dto.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,9 +24,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(
-            @Valid @RequestBody RegisterRequest request) {
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
 
-        UserResponse user = authService.register(request);
+        String clientIp = httpRequest.getRemoteAddr();
+
+        UserResponse user = authService.register(request, clientIp);
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Registration successful", user));
@@ -58,7 +63,7 @@ public class AuthController {
     }
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request) {
+            @Valid @RequestBody EmailOnlyRequest request) {
 
         authService.forgotPassword(request);
         return ResponseEntity.ok(
@@ -86,5 +91,31 @@ public class AuthController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         "Staff account created successfully", response));
+    }
+
+//    to use when some one delayed or did not see otp want to generate new otp
+    @PostMapping("/email/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendEmailVerificationOtp(
+            @Valid @RequestBody EmailOnlyRequest request) {
+        // reusing EmailOnlyRequest's shape (just an email field)
+        // since it's structurally identical — same "don't duplicate
+        // a one-field DTO" reasoning
+
+        authService.sendEmailVerificationOtp(request.getEmail());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "If this email is registered and unverified, " +
+                                "an OTP has been sent"));
+    }
+
+    @PostMapping("/email/verify")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+
+        authService.verifyEmail(request.getEmail(), request.getOtp());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Email verified successfully"));
     }
 }

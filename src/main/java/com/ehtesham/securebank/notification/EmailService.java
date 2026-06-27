@@ -15,12 +15,12 @@ public class EmailService {
     }
 
     @Async
-    public void sendOtpEmail(String toEmail, String otp) {
+    public void sendOtpEmail(String toEmail, String otp, String purposeLabel) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
-        message.setSubject("SecureBank - Password Reset OTP");
+        message.setSubject("SecureBank - " + purposeLabel + " OTP");
         message.setText(
-                "Your OTP for password reset is: " + otp + "\n\n" +
+                "Your OTP for " + purposeLabel.toLowerCase() + " is: " + otp + "\n\n" +
                         "This OTP is valid for 10 minutes.\n\n" +
                         "If you did not request this, please ignore this email.\n\n" +
                         "SecureBank Security Team"

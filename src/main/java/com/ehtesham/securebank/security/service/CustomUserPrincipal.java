@@ -21,6 +21,7 @@ public class CustomUserPrincipal extends User {
             String password,
             UserStatus userStatus,
             LocalDateTime lockedUntil,
+            boolean emailVerified,
             Collection<? extends GrantedAuthority> authorities) {
         super(email, password, authorities);
         this.userId = userId;
@@ -30,7 +31,8 @@ public class CustomUserPrincipal extends User {
                 || lockedUntil.isBefore(LocalDateTime.now());
         // SUSPENDED and CLOSED both mean "not enabled" —
         // computed ONCE, at construction, same pattern as lockout
-        this.enabled = userStatus != UserStatus.SUSPENDED
+        this.enabled = emailVerified
+                && userStatus != UserStatus.SUSPENDED
                 && userStatus != UserStatus.CLOSED;
     }
     @Override

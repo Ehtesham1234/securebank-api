@@ -63,4 +63,7 @@ public class User {
 
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
+
+    @Column(name = "email_verified")
+    private boolean isEmailVerified;
 }
