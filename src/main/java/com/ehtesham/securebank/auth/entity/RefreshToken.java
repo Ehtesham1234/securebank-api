@@ -29,4 +29,7 @@ public class RefreshToken {
 
     @Column(nullable = false)
     private boolean revoked = false;
+
+    @Column(name = "token_family", nullable = false)
+    private String tokenFamily;
 }

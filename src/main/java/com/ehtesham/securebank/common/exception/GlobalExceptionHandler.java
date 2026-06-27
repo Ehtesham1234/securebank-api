@@ -130,6 +130,19 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
+
+    // GlobalExceptionHandler
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(TokenReuseDetectedException.class)
+    public ErrorResponse handleTokenReuseDetected(
+            TokenReuseDetectedException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.UNAUTHORIZED.value(),
+                "TOKEN_REUSE_DETECTED",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Account status exceptions ────────────────────────────────
 
     @ExceptionHandler(KycNotVerifiedException.class)

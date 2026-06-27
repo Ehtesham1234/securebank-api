@@ -4,6 +4,7 @@ import com.ehtesham.securebank.auth.entity.RefreshToken;
 import com.ehtesham.securebank.auth.repository.RefreshTokenRepository;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
 import com.ehtesham.securebank.common.exception.TokenExpiredException;
+import com.ehtesham.securebank.common.exception.TokenReuseDetectedException;
 import com.ehtesham.securebank.user.entity.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,20 +20,33 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
-
+    // self-injection — Spring resolves this to the PROXIED bean,
+    // not "this" directly, because it's a constructor-injected
+    // dependency, not a direct method call
+    private final RefreshTokenService self;
     public RefreshTokenServiceImpl(
-            RefreshTokenRepository refreshTokenRepository) {
+            RefreshTokenRepository refreshTokenRepository,
+            @org.springframework.context.annotation.Lazy RefreshTokenService self
+            ) {
         this.refreshTokenRepository = refreshTokenRepository;
+        this.self = self;
     }
 
     @Override
     @Transactional
     public RefreshToken createRefreshToken(User user) {
-        // revoke old tokens first — one active refresh token per user
-        refreshTokenRepository.revokeAllUserTokens(user);
+
+        // NOTE: removed the old "revoke ALL previous tokens" call
+        // here — that was the ONE-DEVICE-ONLY restriction. We're
+        // deliberately NOT revoking other families on a fresh
+        // login anymore, since each login should start its OWN
+        // independent family (this directly sets up 0.5f, multi-device,
+        // without fully building it yet — login itself no longer
+        // assumes "only one session ever")
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setTokenFamily(UUID.randomUUID().toString());  // NEW family
         refreshToken.setUser(user);
         refreshToken.setExpiryDate(
                 Instant.now().plusMillis(refreshExpiration));
@@ -42,8 +56,45 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
+    public RefreshToken rotateToken(String oldTokenValue) {
+
+        RefreshToken oldToken = refreshTokenRepository
+                .findByToken(oldTokenValue)
+                .orElseThrow(() ->
+                        new TokenExpiredException("Invalid refresh token"));
+
+        if (oldToken.isRevoked()) {
+
+            // calling through "self" — THIS goes through Spring's
+            // proxy correctly, REQUIRES_NEW actually takes effect
+            self.revokeTokenFamily(oldToken.getTokenFamily());
+
+            throw new TokenReuseDetectedException(
+                    "This session has been terminated due to " +
+                            "suspicious activity. Please log in again.");
+        }
+
+        if (oldToken.getExpiryDate().isBefore(Instant.now())) {
+            throw new TokenExpiredException("Refresh token has expired");
+        }
+
+        oldToken.setRevoked(true);
+        refreshTokenRepository.save(oldToken);
+
+        RefreshToken newToken = new RefreshToken();
+        newToken.setToken(UUID.randomUUID().toString());
+        newToken.setTokenFamily(oldToken.getTokenFamily());
+        newToken.setUser(oldToken.getUser());
+        newToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
+        newToken.setRevoked(false);
+
+        return refreshTokenRepository.save(newToken);
+    }
+
+    @Override
     public RefreshToken verifyRefreshToken(String token) {
+
         RefreshToken refreshToken = refreshTokenRepository
                 .findByToken(token)
                 .orElseThrow(() ->
@@ -74,5 +125,11 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 .ifPresent(refreshToken ->
                         refreshTokenRepository
                                 .revokeAllUserTokens(refreshToken.getUser()));
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void revokeTokenFamily(String tokenFamily) {
+        refreshTokenRepository.revokeByTokenFamily(tokenFamily);
     }
 }

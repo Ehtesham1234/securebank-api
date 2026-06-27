@@ -233,20 +233,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
-        RefreshToken refreshToken = refreshTokenService
-                .verifyRefreshToken(request.getRefreshToken());
+
+        RefreshToken newRefreshToken = refreshTokenService
+                .rotateToken(request.getRefreshToken());
 
         String newAccessToken = jwtService.generateToken(
-                refreshToken.getUser().getEmail(),
-                "ROLE_" +  refreshToken.getUser().getRole().name()  // ← pass role
-        );
+                newRefreshToken.getUser().getEmail(),
+                "ROLE_" + newRefreshToken.getUser().getRole().name());
 
         return new AuthResponse(
                 newAccessToken,
-                refreshToken.getToken(),
-                refreshToken.getUser().getUserStatus(),  // ← real value
-                refreshToken.getUser().getRole()         // ← real value
-        );
+                newRefreshToken.getToken(),       // ← NEW token returned, not the old one
+                newRefreshToken.getUser().getUserStatus(),
+                newRefreshToken.getUser().getRole());
     }
 
     @Override
