@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.auth.dto;
 
+import com.ehtesham.securebank.common.validation.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -19,7 +20,7 @@ public class ResetPasswordRequest {
     @NotBlank(message = "OTP is required")
     private String otp;
 
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @StrongPassword
     @NotBlank(message = "New password is required")
     private String newPassword;
 }
