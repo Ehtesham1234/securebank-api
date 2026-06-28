@@ -82,19 +82,6 @@ public class AuthController {
                 ApiResponse.success("Password reset successful"));
     }
 
-    @PostMapping("/admin/users/create-staff")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> createStaffUser(
-            @Valid @RequestBody CreateStaffRequest request) {
-
-        UserResponse response = authService.createStaffUser(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(
-                        "Staff account created successfully", response));
-    }
-
 //    to use when some one delayed or did not see otp want to generate new otp
     @PostMapping("/email/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendEmailVerificationOtp(
@@ -121,35 +108,5 @@ public class AuthController {
                 ApiResponse.success("Email verified successfully"));
     }
 
-    @GetMapping("/sessions")
-    public ResponseEntity<ApiResponse<List<ActiveSessionResponse>>> getActiveSessions(
-            @AuthenticationPrincipal CustomUserPrincipal principal) {
 
-        List<ActiveSessionResponse> sessions =
-                authService.getActiveSessions(principal.getUserId());
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Active sessions retrieved", sessions));
-    }
-
-    @DeleteMapping("/sessions/{tokenFamily}")
-    public ResponseEntity<ApiResponse<Void>> revokeSession(
-            @PathVariable String tokenFamily,
-            @AuthenticationPrincipal CustomUserPrincipal principal) {
-
-        authService.revokeSession(principal.getUserId(), tokenFamily);
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Session revoked successfully"));
-    }
-
-    @PostMapping("/logout-all-devices")
-    public ResponseEntity<ApiResponse<Void>> logoutAllDevices(
-            @AuthenticationPrincipal CustomUserPrincipal principal) {
-
-        authService.logoutAllDevices(principal.getUserId());
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Logged out from all devices"));
-    }
 }
