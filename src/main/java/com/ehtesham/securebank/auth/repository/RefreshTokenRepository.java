@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
@@ -21,4 +22,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Query("UPDATE RefreshToken rt SET rt.revoked = true " +
             "WHERE rt.tokenFamily = :tokenFamily")
     void revokeByTokenFamily(String tokenFamily);
+
+    @Query("SELECT DISTINCT rt.tokenFamily, MIN(rt.createdAt), MAX(rt.expiryDate) " +
+            "FROM RefreshToken rt " +
+            "WHERE rt.user = :user AND rt.revoked = false " +
+            "GROUP BY rt.tokenFamily")
+    List<Object[]> findActiveSessionSummariesByUser(User user);
+
+    boolean existsByUserAndTokenFamily(User user, String tokenFamily);
 }

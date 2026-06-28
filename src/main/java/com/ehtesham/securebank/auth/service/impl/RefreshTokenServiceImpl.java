@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.auth.service.impl;
 
+import com.ehtesham.securebank.auth.dto.ActiveSessionResponse;
 import com.ehtesham.securebank.auth.entity.RefreshToken;
 import com.ehtesham.securebank.auth.repository.RefreshTokenRepository;
 import com.ehtesham.securebank.auth.service.RefreshTokenService;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -130,6 +133,47 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void revokeTokenFamily(String tokenFamily) {
+        refreshTokenRepository.revokeByTokenFamily(tokenFamily);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveSessionResponse> getActiveSessions(
+            User user, String currentTokenFamily) {
+
+        List<Object[]> results = refreshTokenRepository
+                .findActiveSessionSummariesByUser(user);
+
+        return results.stream()
+                .map(row -> ActiveSessionResponse.builder()
+                        .tokenFamily((String) row[0])
+                        .createdAt((LocalDateTime) row[1])
+                        .expiresAt(
+                                ((Instant) row[2])
+                                        .atZone(java.time.ZoneId.systemDefault())
+                                        .toLocalDateTime())
+                        .currentSession(
+                                row[0].equals(currentTokenFamily))
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void revokeSession(User user, String tokenFamily) {
+
+        // ownership check — make sure this family actually belongs
+        // to THIS user, before letting them revoke it. Without this,
+        // a malicious user could pass ANY family ID and kill ANOTHER
+        // user's session
+        boolean belongsToUser = refreshTokenRepository
+                .existsByUserAndTokenFamily(user, tokenFamily);
+
+        if (!belongsToUser) {
+            throw new com.ehtesham.securebank.common.exception
+                    .ResourceNotFoundException("Session not found");
+        }
+
         refreshTokenRepository.revokeByTokenFamily(tokenFamily);
     }
 }

@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -365,5 +366,26 @@ public class AuthServiceImpl implements AuthService {
 
         user.setEmailVerified(true);
         userRepository.save(user);
+    }
+
+    @Override
+    public List<ActiveSessionResponse> getActiveSessions(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return refreshTokenService.getActiveSessions(user, null);
+    }
+
+    @Override
+    public void revokeSession(Long userId, String tokenFamily) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        refreshTokenService.revokeSession(user, tokenFamily);
+    }
+
+    @Override
+    public void logoutAllDevices(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        refreshTokenService.revokeAllUserTokens(user);
     }
 }
