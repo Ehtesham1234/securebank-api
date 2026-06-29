@@ -31,6 +31,9 @@ public class IdempotencyKey {
     @Column(name = "response_status")
     private Integer responseStatus;
 
+    @Column(name = "operation_type", nullable = false)
+    private String operationType;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

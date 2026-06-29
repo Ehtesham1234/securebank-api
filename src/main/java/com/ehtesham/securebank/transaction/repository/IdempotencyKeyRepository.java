@@ -11,4 +11,6 @@ public interface IdempotencyKeyRepository
 
     Optional<IdempotencyKey> findByIdempotencyKeyAndUser(
             String idempotencyKey, User user);
+    Optional<IdempotencyKey> findByIdempotencyKeyAndUserAndOperationType(
+            String idempotencyKey, User user, String operationType);
 }

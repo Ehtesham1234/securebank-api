@@ -7,6 +7,7 @@ import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.TransactionStatus;
 import com.ehtesham.securebank.common.enums.TransactionType;
 import com.ehtesham.securebank.common.exception.AccountOperationException;
+import com.ehtesham.securebank.common.exception.InsufficientFundsException;
 import com.ehtesham.securebank.common.exception.ResourceNotFoundException;
 import com.ehtesham.securebank.transaction.dto.*;
 import com.ehtesham.securebank.transaction.entity.Transaction;
@@ -53,7 +54,7 @@ public class TransactionServiceImpl implements TransactionService {
         User user = getUser(email);
 
         return idempotencyHelper.executeIdempotently(
-                idempotencyKey, user, TransactionResponse.class,
+                idempotencyKey, user, "DEPOSIT", TransactionResponse.class,
                 () -> doDeposit(accountId, request, user));
     }
 
@@ -90,13 +91,138 @@ public class TransactionServiceImpl implements TransactionService {
 
     // ... withdraw, transfer, getTransactionHistory, and private
     @Override
-    public TransactionResponse withdraw(Long accountId, WithdrawRequest request, String email, String idempotencyKey) {
-        return null;
+    public TransactionResponse withdraw(
+            Long accountId, WithdrawRequest request,
+            String email, String idempotencyKey) {
+
+        User user = getUser(email);
+
+        return idempotencyHelper.executeIdempotently(
+                idempotencyKey, user, "WITHDRAW", TransactionResponse.class,
+                () -> doWithdraw(accountId, request, user));
+    }
+
+    @Transactional
+    protected TransactionResponse doWithdraw(
+            Long accountId, WithdrawRequest request, User user) {
+
+        Account account = accountService.getOwnedAccount(accountId, user);
+
+        validateAccountActive(account);
+
+        if (account.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientFundsException(
+                    "Insufficient balance for this withdrawal");
+        }
+
+        BigDecimal newBalance = account.getBalance().subtract(request.getAmount());
+        account.setBalance(newBalance);
+
+        accountRepository.save(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setTransactionRef(generateTransactionRef());
+        transaction.setAccount(account);
+        transaction.setType(TransactionType.WITHDRAW);
+        transaction.setAmount(request.getAmount());
+        transaction.setBalanceAfter(newBalance);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setDescription(request.getDescription());
+
+        Transaction saved = transactionRepository.save(transaction);
+
+        return mapToResponse(saved);
     }
 
     @Override
-    public TransactionResponse transfer(TransferRequest request, String email, String idempotencyKey) {
-        return null;
+    public TransactionResponse transfer(
+            TransferRequest request,
+            String email, String idempotencyKey) {
+
+        User user = getUser(email);
+
+        return idempotencyHelper.executeIdempotently(
+                idempotencyKey, user, "TRANSFER", TransactionResponse.class,
+                () -> doTransfer(request, user));
+    }
+
+    @Transactional
+    protected TransactionResponse doTransfer(
+            TransferRequest request, User user) {
+
+        if (request.getFromAccountNumber()
+                .equals(request.getToAccountNumber())) {
+            throw new AccountOperationException(
+                    "Cannot transfer to the same account");
+        }
+
+        Account fromAccount = accountRepository
+                .findByAccountNumber(request.getFromAccountNumber())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Source account not found"));
+
+        if (!fromAccount.getUser().getId().equals(user.getId())) {
+            throw new ResourceNotFoundException("Source account not found");
+        }
+
+        Account toAccount = accountRepository
+                .findByAccountNumber(request.getToAccountNumber())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Destination account not found"));
+
+        validateAccountActive(fromAccount);
+        validateAccountActive(toAccount);
+
+        if (fromAccount.getBalance()
+                .compareTo(request.getAmount()) < 0) {
+            throw new InsufficientFundsException(
+                    "Insufficient balance for this transfer");
+        }
+
+        BigDecimal fromNewBalance = fromAccount.getBalance()
+                .subtract(request.getAmount());
+        BigDecimal toNewBalance = toAccount.getBalance()
+                .add(request.getAmount());
+
+        fromAccount.setBalance(fromNewBalance);
+        toAccount.setBalance(toNewBalance);
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        String sharedRef = generateTransactionRef();
+
+        Transaction outgoing = new Transaction();
+        outgoing.setTransactionRef(sharedRef + "-OUT");
+        outgoing.setAccount(fromAccount);
+        outgoing.setType(TransactionType.TRANSFER_OUT);
+        outgoing.setAmount(request.getAmount());
+        outgoing.setBalanceAfter(fromNewBalance);
+        outgoing.setStatus(TransactionStatus.SUCCESS);
+        outgoing.setDescription(request.getDescription());
+        outgoing.setRelatedAccount(toAccount);
+
+        Transaction savedOutgoing = transactionRepository.save(outgoing);
+
+        Transaction incoming = new Transaction();
+        incoming.setTransactionRef(sharedRef + "-IN");
+        incoming.setAccount(toAccount);
+        incoming.setType(TransactionType.TRANSFER_IN);
+        incoming.setAmount(request.getAmount());
+        incoming.setBalanceAfter(toNewBalance);
+        incoming.setStatus(TransactionStatus.SUCCESS);
+        incoming.setDescription(request.getDescription());
+        incoming.setRelatedAccount(fromAccount);
+
+        transactionRepository.save(incoming);
+
+        // reuse savedOutgoing directly — DO NOT call save() again
+        // just to "re-fetch" it. account and relatedAccount are
+        // ALREADY fully-loaded real objects on this exact instance,
+        // set just a few lines above, no proxy involved at all.
+        return mapToResponse(savedOutgoing);
     }
 
     @Override

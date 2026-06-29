@@ -29,14 +29,17 @@ public class IdempotencyHelper {
      * successfully, returns the SAME cached response instead
      * of re-running the operation.
      */
+    // IdempotencyHelper — add operationType as a parameter
     public <T> T executeIdempotently(
             String idempotencyKey,
             User user,
+            String operationType,
             Class<T> responseType,
             Supplier<T> operation) {
 
         Optional<IdempotencyKey> existing = idempotencyKeyRepository
-                .findByIdempotencyKeyAndUser(idempotencyKey, user);
+                .findByIdempotencyKeyAndUserAndOperationType(
+                        idempotencyKey, user, operationType);
 
         if (existing.isPresent()) {
             try {
@@ -54,6 +57,7 @@ public class IdempotencyHelper {
             IdempotencyKey record = new IdempotencyKey();
             record.setIdempotencyKey(idempotencyKey);
             record.setUser(user);
+            record.setOperationType(operationType);
             record.setResponseBody(objectMapper.writeValueAsString(result));
             record.setResponseStatus(200);
             idempotencyKeyRepository.save(record);

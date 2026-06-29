@@ -206,6 +206,20 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
+
+    // GlobalExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ErrorResponse handleInsufficientFunds(
+            InsufficientFundsException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "INSUFFICIENT_FUNDS",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
+
 // ── Spring Security exceptions ───────────────────────────────
 
     @ExceptionHandler(LockedException.class)
