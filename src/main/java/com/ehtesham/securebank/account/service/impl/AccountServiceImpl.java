@@ -58,6 +58,11 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public AccountResponse createSavingsAccount(User user) {
 
+        if (accountRepository.existsByUserAndAccountType(
+                user, AccountType.SAVINGS)) {
+            throw new AccountOperationException(
+                    "User already has a SAVINGS account");
+        }
         Account account = new Account();
         account.setUser(user);
         account.setAccountType(AccountType.SAVINGS);

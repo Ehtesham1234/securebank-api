@@ -5,6 +5,7 @@ import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.AccountType;
 import com.ehtesham.securebank.common.enums.KycStatus;
 import com.ehtesham.securebank.common.enums.UserStatus;
+import com.ehtesham.securebank.common.exception.AccountOperationException;
 import com.ehtesham.securebank.common.exception.KycNotVerifiedException;
 import com.ehtesham.securebank.common.exception.ResourceNotFoundException;
 import com.ehtesham.securebank.kyc.dto.KycRejectRequest;
@@ -124,6 +125,13 @@ public class KycServiceImpl implements KycService {
     public KycResponse verifyKyc(Long kycId, String tellerEmail) {
 
         KycDocument kycDocument = getKycDocument(kycId);
+
+        if (kycDocument.getStatus() != KycStatus.PENDING) {
+            throw new AccountOperationException(
+                    "This KYC document has already been " +
+                            kycDocument.getStatus().name().toLowerCase() +
+                            " and cannot be processed again.");
+        }
         User teller = getUser(tellerEmail);
 
         // update KYC status
@@ -155,6 +163,14 @@ public class KycServiceImpl implements KycService {
             String tellerEmail) {
 
         KycDocument kycDocument = getKycDocument(kycId);
+
+        if (kycDocument.getStatus() != KycStatus.PENDING) {
+            throw new AccountOperationException(
+                    "This KYC document has already been " +
+                            kycDocument.getStatus().name().toLowerCase() +
+                            " and cannot be processed again.");
+        }
+
         User teller = getUser(tellerEmail);
 
         kycDocument.setStatus(KycStatus.REJECTED);

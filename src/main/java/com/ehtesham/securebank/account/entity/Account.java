@@ -45,6 +45,10 @@ public class Account {
             scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

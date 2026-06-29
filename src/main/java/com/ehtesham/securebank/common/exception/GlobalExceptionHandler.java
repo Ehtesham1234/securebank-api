@@ -143,6 +143,7 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
     }
+
 // ── Account status exceptions ────────────────────────────────
 
     @ExceptionHandler(KycNotVerifiedException.class)
@@ -180,7 +181,31 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI()));
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ErrorResponse handleOptimisticLocking(
+            org.springframework.orm.ObjectOptimisticLockingFailureException ex,
+            HttpServletRequest request) {
 
+        return ErrorResponse.of(
+                HttpStatus.CONFLICT.value(),
+                "CONCURRENT_MODIFICATION",
+                "This account was just modified by another request. " +
+                        "Please try again.",
+                request.getRequestURI());
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ErrorResponse handleResourceNotFound(
+            ResourceNotFoundException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.NOT_FOUND.value(),
+                "RESOURCE_NOT_FOUND",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
 // ── Spring Security exceptions ───────────────────────────────
 
     @ExceptionHandler(LockedException.class)
