@@ -220,6 +220,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI());
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TransactionAlreadyReversedException.class)
+    public ErrorResponse handleTransactionAlreadyReversedException(
+            TransactionAlreadyReversedException ex,
+            HttpServletRequest request) {
+        return ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "Transaction_Already_Reversed",
+                ex.getMessage(),
+                request.getRequestURI());
+    }
+
 // ── Spring Security exceptions ───────────────────────────────
 
     @ExceptionHandler(LockedException.class)

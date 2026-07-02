@@ -24,4 +24,10 @@ public interface TransactionService {
 
     Page<TransactionResponse> getTransactionHistory(
             Long accountId, String email, Pageable pageable);
+
+    // TransactionService interface — add this
+    Page<TransactionResponse> getAllTransactions(Pageable pageable);
+
+    // TransactionService interface
+    TransactionResponse reverseTransaction(Long transactionId, String adminEmail);
 }

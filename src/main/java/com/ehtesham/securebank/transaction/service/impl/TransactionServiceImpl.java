@@ -9,6 +9,7 @@ import com.ehtesham.securebank.common.enums.TransactionType;
 import com.ehtesham.securebank.common.exception.AccountOperationException;
 import com.ehtesham.securebank.common.exception.InsufficientFundsException;
 import com.ehtesham.securebank.common.exception.ResourceNotFoundException;
+import com.ehtesham.securebank.common.exception.TransactionAlreadyReversedException;
 import com.ehtesham.securebank.transaction.dto.*;
 import com.ehtesham.securebank.transaction.entity.Transaction;
 import com.ehtesham.securebank.transaction.repository.TransactionRepository;
@@ -226,8 +227,131 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public Page<TransactionResponse> getTransactionHistory(Long accountId, String email, Pageable pageable) {
-        return null;
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getTransactionHistory(
+            Long accountId, String email, Pageable pageable) {
+
+        User user = getUser(email);
+
+        Account account = accountService.getOwnedAccount(accountId, user);
+
+        Page<Transaction> transactionPage = transactionRepository
+                .findByAccount(account, pageable);
+
+        return transactionPage.map(this::mapToResponse);
+    }
+    // TransactionServiceImpl
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getAllTransactions(Pageable pageable) {
+        return transactionRepository.findAll(pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse reverseTransaction(
+            Long transactionId, String adminEmail) {
+
+        Transaction original = transactionRepository.findById(transactionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Transaction not found"));
+
+        if (original.getStatus() == TransactionStatus.REVERSED) {
+            throw new TransactionAlreadyReversedException(
+                    "This transaction has already been reversed");
+        }
+
+        // handle transfer pairing atomically
+        if (original.getType() == TransactionType.TRANSFER_OUT
+                || original.getType() == TransactionType.TRANSFER_IN) {
+
+            return reverseTransferPair(original);
+        }
+
+        // DEPOSIT or WITHDRAW — simple single-account reversal
+        return reverseSingleTransaction(original);
+    }
+    private TransactionResponse reverseTransferPair(Transaction original) {
+
+        // find the paired transaction (the other half of this transfer)
+        String pairedRef;
+        if (original.getTransactionRef().endsWith("-OUT")) {
+            pairedRef = original.getTransactionRef()
+                    .replace("-OUT", "-IN");
+        } else {
+            pairedRef = original.getTransactionRef()
+                    .replace("-IN", "-OUT");
+        }
+
+        Transaction paired = transactionRepository
+                .findByTransactionRef(pairedRef)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Paired transfer transaction not found: " + pairedRef));
+
+        if (paired.getStatus() == TransactionStatus.REVERSED) {
+            throw new TransactionAlreadyReversedException(
+                    "The paired transfer transaction has already been reversed");
+        }
+
+        // reverse BOTH sides in the same @Transactional call
+        TransactionResponse reversalOut = reverseSingleTransaction(original);
+        reverseSingleTransaction(paired);
+
+        return reversalOut;
+    }
+    private Transaction doSingleReversal(Transaction original) {
+
+        Account account = original.getAccount();
+        BigDecimal reversalAmount = original.getAmount();
+        BigDecimal newBalance;
+
+        if (original.getType() == TransactionType.DEPOSIT
+                || original.getType() == TransactionType.TRANSFER_IN) {
+
+            newBalance = account.getBalance().subtract(reversalAmount);
+
+            if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                throw new InsufficientFundsException(
+                        "Cannot reverse transaction " +
+                                original.getTransactionRef() +
+                                " — account " + account.getAccountNumber() +
+                                " has insufficient balance (current: ₹" +
+                                account.getBalance().toPlainString() +
+                                ", reversal requires: ₹" +
+                                reversalAmount.toPlainString() + ")");
+            }
+        } else {
+            newBalance = account.getBalance().add(reversalAmount);
+        }
+
+        account.setBalance(newBalance);
+        accountRepository.save(account);
+
+        original.setStatus(TransactionStatus.REVERSED);
+        transactionRepository.save(original);
+
+        Transaction reversalRecord = new Transaction();
+        reversalRecord.setTransactionRef(
+                original.getTransactionRef() + "-REVERSAL");
+        reversalRecord.setAccount(account);
+        reversalRecord.setType(
+                original.getType() == TransactionType.DEPOSIT
+                        || original.getType() == TransactionType.TRANSFER_IN
+                        ? TransactionType.WITHDRAW
+                        : TransactionType.DEPOSIT);
+        reversalRecord.setAmount(reversalAmount);
+        reversalRecord.setBalanceAfter(newBalance);
+        reversalRecord.setStatus(TransactionStatus.SUCCESS);
+        reversalRecord.setDescription(
+                "Reversal of transaction " + original.getTransactionRef());
+
+        return transactionRepository.save(reversalRecord);
+    }
+
+    private TransactionResponse reverseSingleTransaction(Transaction original) {
+        return mapToResponse(doSingleReversal(original));
     }
     //     helpers continue below
     private void validateAccountActive(Account account) {
