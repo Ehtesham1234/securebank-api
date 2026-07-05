@@ -8,6 +8,7 @@ import com.ehtesham.securebank.account.entity.FixedDepositDetails;
 import com.ehtesham.securebank.account.repository.AccountRepository;
 import com.ehtesham.securebank.account.repository.FixedDepositDetailsRepository;
 import com.ehtesham.securebank.account.service.AccountService;
+import com.ehtesham.securebank.audit.annotation.Auditable;
 import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.AccountType;
 import com.ehtesham.securebank.common.exception.AccountOperationException;
@@ -157,7 +158,7 @@ public class AccountServiceImpl implements AccountService {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
-
+    @Auditable(action = "ACCOUNT_FREEZE")
     @Override
     @Transactional
     public AccountResponse freezeAccount(Long id) {

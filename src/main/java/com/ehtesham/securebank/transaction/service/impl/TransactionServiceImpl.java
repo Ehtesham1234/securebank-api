@@ -3,6 +3,7 @@ package com.ehtesham.securebank.transaction.service.impl;
 import com.ehtesham.securebank.account.entity.Account;
 import com.ehtesham.securebank.account.repository.AccountRepository;
 import com.ehtesham.securebank.account.service.AccountService;
+import com.ehtesham.securebank.audit.annotation.Auditable;
 import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.TransactionStatus;
 import com.ehtesham.securebank.common.enums.TransactionType;
@@ -47,6 +48,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.idempotencyHelper = idempotencyHelper;
     }
 
+    @Auditable(action = "DEPOSIT")
     @Override
     public TransactionResponse deposit(
             Long accountId, DepositRequest request,
@@ -91,6 +93,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ... withdraw, transfer, getTransactionHistory, and private
+    @Auditable(action = "WITHDRAW")
     @Override
     public TransactionResponse withdraw(
             Long accountId, WithdrawRequest request,
@@ -134,7 +137,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         return mapToResponse(saved);
     }
-
+    @Auditable(action = "TRANSFER")
     @Override
     public TransactionResponse transfer(
             TransferRequest request,

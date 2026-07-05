@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.auth.service.impl;
 
+import com.ehtesham.securebank.audit.annotation.Auditable;
 import com.ehtesham.securebank.auth.dto.*;
 import com.ehtesham.securebank.auth.entity.RefreshToken;
 import com.ehtesham.securebank.auth.service.AuthService;
@@ -124,7 +125,7 @@ public class AuthServiceImpl implements AuthService {
                 .emailVerified(savedUser.isEmailVerified())
                 .build();
     }
-
+    @Auditable(action = "LOGIN")
     @Transactional
     @Override
     public AuthResponse login(LoginRequest request) {
@@ -298,7 +299,7 @@ public class AuthServiceImpl implements AuthService {
         // 5. revoke all refresh tokens — force re-login on all devices
         refreshTokenService.revokeAllUserTokens(user);
     }
-
+    @Auditable(action = "CREATE_STAFF")
     @Override
     @Transactional
     public UserResponse createStaffUser(CreateStaffRequest request) {

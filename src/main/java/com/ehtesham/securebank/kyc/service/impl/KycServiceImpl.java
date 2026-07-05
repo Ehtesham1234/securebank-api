@@ -1,6 +1,7 @@
 package com.ehtesham.securebank.kyc.service.impl;
 
 import com.ehtesham.securebank.account.service.AccountService;
+import com.ehtesham.securebank.audit.annotation.Auditable;
 import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.AccountType;
 import com.ehtesham.securebank.common.enums.KycStatus;
@@ -120,6 +121,7 @@ public class KycServiceImpl implements KycService {
                 .collect(Collectors.toList());
     }
 
+    @Auditable(action = "KYC_VERIFY")
     @Override
     @Transactional
     public KycResponse verifyKyc(Long kycId, String tellerEmail) {
@@ -155,6 +157,7 @@ public class KycServiceImpl implements KycService {
         return mapToResponse(saved);
     }
 
+    @Auditable(action = "KYC_REJECT")
     @Override
     @Transactional
     public KycResponse rejectKyc(
