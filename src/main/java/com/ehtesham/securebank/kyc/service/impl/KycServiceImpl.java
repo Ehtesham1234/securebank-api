@@ -1,7 +1,11 @@
 package com.ehtesham.securebank.kyc.service.impl;
 
+import com.ehtesham.securebank.account.dto.AccountResponse;
+import com.ehtesham.securebank.account.entity.Account;
+import com.ehtesham.securebank.account.repository.AccountRepository;
 import com.ehtesham.securebank.account.service.AccountService;
 import com.ehtesham.securebank.audit.annotation.Auditable;
+import com.ehtesham.securebank.card.service.CardService;
 import com.ehtesham.securebank.common.enums.AccountStatus;
 import com.ehtesham.securebank.common.enums.AccountType;
 import com.ehtesham.securebank.common.enums.KycStatus;
@@ -39,17 +43,21 @@ public class KycServiceImpl implements KycService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final AccountService accountService;
+    private final CardService cardService;
+    private final AccountRepository accountRepository;
     @Value("${file.upload.path}")
     private String uploadPath;
 
     public KycServiceImpl(
             KycDocumentRepository kycDocumentRepository,
             UserRepository userRepository,
-            EmailService emailService, AccountService accountService) {
+            EmailService emailService, AccountService accountService, CardService cardService, AccountRepository accountRepository) {
         this.kycDocumentRepository = kycDocumentRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
         this.accountService = accountService;
+        this.cardService = cardService;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -146,10 +154,16 @@ public class KycServiceImpl implements KycService {
         userRepository.save(customer);
 
         // auto-create SAVINGS account
-        createSavingsAccount(customer);
+        AccountResponse savingsAccountResponse = accountService.createSavingsAccount(customer);
 
+        Account savingsAccount = accountRepository
+                .findById(savingsAccountResponse.getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Failed to load created savings account"));
+
+        cardService.createDebitCard(customer, savingsAccount);
         KycDocument saved = kycDocumentRepository.save(kycDocument);
-
         // notify customer
         emailService.sendKycVerifiedNotification(
                 customer.getEmail());
@@ -205,11 +219,6 @@ public class KycServiceImpl implements KycService {
                         new ResourceNotFoundException(
                                 "KYC document not found"));
     }
-
-    private void createSavingsAccount(User customer) {
-        accountService.createSavingsAccount(customer);
-    }
-
     private String saveFile(MultipartFile file, Long userId) {
 
         try {

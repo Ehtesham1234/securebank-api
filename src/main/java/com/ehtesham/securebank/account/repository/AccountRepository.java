@@ -27,4 +27,6 @@ public interface AccountRepository
 
     // check account number uniqueness
     boolean existsByAccountNumber(String accountNumber);
+    Optional<Account> findByUserAndAccountTypeAndAccountStatus(
+            User user, AccountType accountType, AccountStatus accountStatus);
 }
