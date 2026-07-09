@@ -1,5 +1,6 @@
 package com.ehtesham.securebank.admin;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Tag(name = "Admin", description = "Administrative operations")
 public class AdminController {
 
     private final PasswordEncoder passwordEncoder;

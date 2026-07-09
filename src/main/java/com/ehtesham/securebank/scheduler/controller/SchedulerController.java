@@ -2,6 +2,7 @@ package com.ehtesham.securebank.scheduler.controller;
 
 import com.ehtesham.securebank.common.response.ApiResponse;
 import com.ehtesham.securebank.scheduler.service.BankingScheduler;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/scheduler")
+@Tag(name = "Scheduler", description = "Manual triggers for scheduled jobs")
 public class SchedulerController {
 
     private final BankingScheduler bankingScheduler;

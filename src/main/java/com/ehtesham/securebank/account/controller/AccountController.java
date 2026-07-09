@@ -4,6 +4,7 @@ import com.ehtesham.securebank.account.dto.AccountApplicationRequest;
 import com.ehtesham.securebank.account.dto.AccountResponse;
 import com.ehtesham.securebank.account.service.AccountService;
 import com.ehtesham.securebank.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Accounts", description = "Account management and operations")
 public class AccountController {
 
     private final AccountService accountService;

@@ -4,6 +4,7 @@ import com.ehtesham.securebank.common.response.ApiResponse;
 import com.ehtesham.securebank.loan.dto.*;
 import com.ehtesham.securebank.loan.service.LoanService;
 import com.ehtesham.securebank.security.service.CustomUserPrincipal;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/loans")
+@Tag(name = "Loans", description = "Loan application and EMI management")
 public class LoanController {
 
     private final LoanService loanService;

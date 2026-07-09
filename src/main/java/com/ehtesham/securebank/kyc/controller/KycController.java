@@ -7,6 +7,7 @@ import com.ehtesham.securebank.kyc.dto.KycSubmitRequest;
 import com.ehtesham.securebank.kyc.service.KycService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "KYC", description = "Know Your Customer verification")
 public class KycController {
 
     private final KycService kycService;

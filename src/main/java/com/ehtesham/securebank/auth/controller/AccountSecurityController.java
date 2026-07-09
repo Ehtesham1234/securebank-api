@@ -6,6 +6,7 @@ import com.ehtesham.securebank.auth.service.AuthService;
 import com.ehtesham.securebank.common.response.ApiResponse;
 import com.ehtesham.securebank.security.service.CustomUserPrincipal;
 import com.ehtesham.securebank.user.dto.UserResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/account-security")
+@Tag(name = "Accounts-security", description = "Account security management and operations")
 public class AccountSecurityController {
 
     private final AuthService authService;

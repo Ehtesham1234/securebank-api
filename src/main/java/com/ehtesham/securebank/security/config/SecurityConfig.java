@@ -62,6 +62,13 @@ public class SecurityConfig {
                         .hasAnyAuthority("ROLE_TELLER", "ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/**")
                         .hasAuthority("ROLE_ADMIN")
+                        // Add to your .requestMatchers().permitAll() chain:
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/v3/api-docs/**",        // raw OpenAPI JSON/YAML
+                                "/swagger-ui/**",          // Swagger UI static files
+                                "/swagger-ui.html"         // Swagger UI entry point
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

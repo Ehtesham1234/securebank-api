@@ -7,6 +7,7 @@ import com.ehtesham.securebank.transaction.dto.TransactionResponse;
 import com.ehtesham.securebank.transaction.dto.TransferRequest;
 import com.ehtesham.securebank.transaction.dto.WithdrawRequest;
 import com.ehtesham.securebank.transaction.service.TransactionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/transaction")
+@Tag(name = "Transactions", description = "Deposits, withdrawals, transfers")
 public class TransactionController {
 
 
