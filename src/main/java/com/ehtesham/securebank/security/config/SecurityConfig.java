@@ -67,7 +67,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",        // raw OpenAPI JSON/YAML
                                 "/swagger-ui/**",          // Swagger UI static files
-                                "/swagger-ui.html"         // Swagger UI entry point
+                                "/swagger-ui.html",        // Swagger UI entry point
+                                "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

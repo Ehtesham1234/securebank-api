@@ -32,5 +32,17 @@ build/
 ### VS Code ###
 .vscode/
 
+# Secrets
+application-local.properties
+
+
+
+# Uploads
+uploads/
+
+# IntelliJ
+.idea/
+
+# Environment
 .env
 *.env
