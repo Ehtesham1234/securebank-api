@@ -12,7 +12,8 @@ jobs:
   test:
     name: Build and Test
     runs-on: ubuntu-latest    # GitHub provides this Linux VM for free
-
+    env:
+      SPRING_PROFILES_ACTIVE: test
     steps:
       # Step 1: Download your code onto the GitHub runner VM
       - name: Checkout code
