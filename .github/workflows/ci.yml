@@ -26,9 +26,11 @@ jobs:
           distribution: 'temurin'
           cache: maven          # cache ~/.m2 between runs (faster builds)
 
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
       # Step 3: Run all tests
       - name: Run tests
-        run: mvn test -B
+        run: mvn test -B -Dspring.profiles.active=test
         # If any test fails, this step fails, and the job fails,
         # and GitHub marks the push/PR as FAILED — blocks merging
 
