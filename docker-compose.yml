@@ -14,7 +14,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
 
     ports:
-      - "3306:3306"           # host:container — your laptop's 3306 → container's 3306
+      - "3307:3306"           # host:container — your laptop's 3306 → container's 3306
       # lets you connect from DBeaver/MySQL Workbench
 
     volumes:
